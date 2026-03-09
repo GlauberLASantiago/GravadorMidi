@@ -1,0 +1,879 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Estúdio MIDI Online - Edição Pastel</title>
+    <!-- Tailwind CSS para estilização -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Soundfont Player para carregar samples -->
+    <script src="https://unpkg.com/soundfont-player/dist/soundfont-player.min.js"></script>
+    <style>
+        /* * PALETA DE CORES:
+         * Verde Claro: #BCDFB9
+         * Rosa/Salmão: #C87F8B
+         * Pêssego:     #E9A97F
+         * Amarelo Pálido:#E7F0C7
+         * Preto:       #000000
+         * Branco:      #FFFFFF
+         */
+
+        body { 
+            background-color: #E7F0C7;
+            color: #000000; 
+            user-select: none;
+            overflow-x: hidden;
+            font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        }
+
+        /* Estilo Neo-Brutalista para containers */
+        .brutal-box {
+            background-color: #FFFFFF;
+            border: 3px solid #000000;
+            border-radius: 12px;
+            box-shadow: 4px 4px 0px #000000;
+            transition: all 0.2s ease;
+        }
+
+        /* Estilização do container do piano */
+        .piano-container {
+            display: flex;
+            background: #BCDFB9;
+            padding: 24px 24px 0 24px;
+            border-radius: 16px;
+            border: 4px solid #000000;
+            box-shadow: 6px 6px 0px #000000;
+            overflow-x: auto;
+            scrollbar-width: thin;
+            scrollbar-color: #000000 #E7F0C7;
+        }
+
+        .piano-container::-webkit-scrollbar { height: 16px; border-top: 4px solid #000000; }
+        .piano-container::-webkit-scrollbar-track { background: #E7F0C7; border-radius: 0 0 12px 12px; }
+        .piano-container::-webkit-scrollbar-thumb { background: #000000; border-radius: 8px; border: 3px solid #E7F0C7; }
+
+        /* Teclas Brancas */
+        .white {
+            width: 54px; 
+            height: 240px; 
+            background: #FFFFFF;
+            border: 3px solid #000000; 
+            border-top: none;
+            border-radius: 0 0 8px 8px;
+            cursor: pointer; 
+            position: relative; 
+            z-index: 1;
+            box-shadow: 0 6px 0px rgba(0,0,0,0.1);
+            transition: background 0.05s ease, transform 0.05s ease, box-shadow 0.05s ease;
+        }
+        .white.active {
+            background: #E9A97F; 
+            transform: translateY(4px);
+            box-shadow: 0 2px 0px rgba(0,0,0,0.1);
+        }
+
+        /* Teclas Pretas */
+        .black {
+            width: 34px; 
+            height: 150px;
+            background: #000000;
+            border: 2px solid #000000;
+            border-radius: 0 0 6px 6px; 
+            cursor: pointer;
+            z-index: 10; 
+            transition: background 0.05s ease, transform 0.05s ease;
+            position: absolute; 
+            top: 0; 
+            right: -17px; 
+        }
+        .black.active {
+            background: #C87F8B; 
+            border-color: #000000;
+            transform: translateY(4px);
+        }
+
+        /* Elementos de Formulário UI */
+        select, button {
+            border: 2px solid #000000;
+            color: #000000; 
+            font-weight: 700;
+            transition: all 0.1s ease;
+        }
+        select { background-color: #FFFFFF; }
+        select:focus { outline: none; box-shadow: 4px 4px 0px #C87F8B; }
+        
+        button { box-shadow: 2px 2px 0px #000000; }
+        button:hover { transform: translate(-1px, -1px); box-shadow: 3px 3px 0px #000000; }
+        button:active { transform: translate(2px, 2px); box-shadow: 0px 0px 0px #000000; }
+        button:disabled { opacity: 0.5; pointer-events: none; box-shadow: 0px 0px 0px #000000; transform: translate(2px, 2px); }
+        
+        .title-shadow { text-shadow: 2px 2px 0px #000000; }
+        
+        /* Ocultar setas do input number */
+        input[type=number]::-webkit-inner-spin-button, 
+        input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+    </style>
+</head>
+<body class="flex flex-col items-center min-h-screen py-4">
+
+    <div class="max-w-[1400px] w-full mx-auto px-4 flex flex-col gap-3">
+        
+        <!-- Cabeçalho e Metadados Lado a Lado -->
+        <div class="flex flex-col md:flex-row items-center justify-between gap-4 w-full">
+            <h1 class="text-3xl md:text-4xl font-black tracking-tight text-[#C87F8B] title-shadow border-black leading-none shrink-0 whitespace-nowrap">
+                Estúdio MIDI
+            </h1>
+            <div class="flex flex-1 w-full gap-3">
+                <input type="text" id="song-title" placeholder="Título da música" class="flex-[2] text-sm font-bold border-2 border-black px-3 py-2 rounded-md bg-white w-full focus:outline-none focus:border-[#C87F8B] shadow-[2px_2px_0px_#000000]">
+                <input type="text" id="composer-name" placeholder="Seu nome" class="flex-[1] text-sm font-bold border-2 border-black px-3 py-2 rounded-md bg-white w-full focus:outline-none focus:border-[#C87F8B] shadow-[2px_2px_0px_#000000]">
+            </div>
+        </div>
+
+        <!-- Barra do Gravador (Tudo em Linha) -->
+        <div class="brutal-box p-2.5 flex flex-wrap lg:flex-nowrap gap-3 items-center justify-between bg-[#BCDFB9] w-full">
+            
+            <!-- Controles Play/Rec -->
+            <div class="flex items-center gap-2">
+                <button id="btn-record" class="flex items-center gap-1.5 px-3 py-1.5 bg-[#FFFFFF] text-[#C87F8B] rounded-md border-2 border-black text-sm">
+                    <span class="w-2.5 h-2.5 rounded-full bg-current border border-black record-dot"></span> <span id="record-text">Gravar</span>
+                </button>
+                <button id="btn-play" disabled class="flex items-center gap-1.5 px-3 py-1.5 bg-[#FFFFFF] text-black rounded-md border-2 border-black text-sm">
+                    ▶ Play
+                </button>
+                <button id="btn-stop" disabled class="flex items-center gap-1.5 px-3 py-1.5 bg-[#FFFFFF] rounded-md border-2 border-black text-sm">
+                    ⏹ Parar
+                </button>
+                <button id="btn-clear" class="flex items-center gap-1.5 px-3 py-1.5 bg-[#FFFFFF] rounded-md border-2 border-black text-sm" title="Apagar gravação atual">
+                    🗑 Limpar
+                </button>
+            </div>
+
+            <!-- Controles do Metrônomo -->
+            <div class="flex items-center gap-2 bg-[#FFFFFF] px-2.5 py-1.5 rounded-md border-2 border-black shadow-[2px_2px_0px_#000000]">
+                <label class="text-[11px] font-black uppercase flex items-center gap-1.5 cursor-pointer" title="Ativar metrônomo">
+                    <input type="checkbox" id="metronome-toggle" class="w-3.5 h-3.5 accent-[#C87F8B] cursor-pointer border-2 border-black" checked>
+                    Metrônomo
+                </label>
+                <div class="h-4 w-[2px] bg-black"></div>
+                <div class="flex items-center gap-1" title="Andamento (Batidas por Minuto)">
+                    <input type="number" id="bpm-input" value="120" min="40" max="240" class="w-10 text-xs font-black text-center border-b-2 border-black focus:outline-none focus:border-[#C87F8B]">
+                    <span class="text-[10px] font-black uppercase">BPM</span>
+                </div>
+                <div class="h-4 w-[2px] bg-black"></div>
+                <select id="time-sig-select" class="text-xs font-black border-none focus:outline-none cursor-pointer bg-transparent appearance-none text-center" title="Fórmula de Compasso">
+                    <option value="4/4">4/4</option>
+                    <option value="3/4">3/4</option>
+                    <option value="2/4">2/4</option>
+                    <option value="6/8">6/8</option>
+                </select>
+            </div>
+
+            <!-- Status e Download -->
+            <div class="flex items-center gap-2">
+                <span class="text-[11px] font-bold bg-[#FFFFFF] px-3 py-1.5 rounded-md border-2 border-black shadow-[2px_2px_0px_#000000] whitespace-nowrap">
+                    NOTAS: <span id="note-count" class="text-[#C87F8B] font-black text-sm">0</span>
+                </span>
+                <button id="btn-export" disabled class="flex items-center gap-1.5 px-3 py-1.5 bg-[#E9A97F] text-black rounded-md border-2 border-black text-[11px] font-black uppercase tracking-wider whitespace-nowrap">
+                    <span id="export-text">⬇ Baixar .MID</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Container do Piano -->
+        <div id="piano" class="piano-container pb-4 relative"></div>
+
+        <!-- Barra de Controles do Teclado e Status -->
+        <div class="brutal-box p-3 flex flex-wrap gap-4 items-end bg-[#FFFFFF]">
+            
+            <!-- Status -->
+            <div id="status-indicator" class="flex items-center gap-2 px-3 py-2 bg-[#E7F0C7] border-2 border-black rounded-lg flex-1 min-w-[180px] shadow-[inset_2px_2px_0px_rgba(0,0,0,0.1)]">
+                <div id="status-dot" class="w-2.5 h-2.5 rounded-full border-2 border-black bg-[#E9A97F] animate-pulse"></div>
+                <span id="status-text" class="text-[10px] font-bold uppercase truncate">Carregando motores...</span>
+            </div>
+
+            <div class="flex-1 min-w-[130px]">
+                <label class="block text-[10px] font-black mb-1 uppercase tracking-wider">Teclado Externo</label>
+                <select id="midi-in-select" class="w-full p-1.5 text-xs rounded-md appearance-none cursor-pointer">
+                    <option value="">Nenhum / QWERTY</option>
+                </select>
+            </div>
+            <div class="flex-1 min-w-[130px]">
+                <label class="block text-[10px] font-black mb-1 uppercase tracking-wider">Saída de Áudio</label>
+                <select id="midi-out-select" class="w-full p-1.5 text-xs rounded-md appearance-none cursor-pointer">
+                    <option value="web-synth">Sintetizador Web</option>
+                </select>
+            </div>
+            <div class="flex-1 min-w-[160px]">
+                <label class="block text-[10px] font-black mb-1 uppercase tracking-wider">Instrumento</label>
+                <select id="instrument-select" class="w-full p-1.5 text-xs rounded-md appearance-none cursor-pointer"></select>
+            </div>
+            <div class="flex flex-col items-center min-w-[70px]">
+                <label class="block text-[10px] font-black mb-1 uppercase tracking-wider">Oitava: <span id="oct-display" class="text-[#C87F8B]">4</span></label>
+                <div class="flex gap-1">
+                    <button id="oct-down" class="px-2 py-0.5 bg-[#FFFFFF] rounded border-2 border-black font-black text-sm leading-none">-</button>
+                    <button id="oct-up" class="px-2 py-0.5 bg-[#FFFFFF] rounded border-2 border-black font-black text-sm leading-none">+</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Rodapé com Créditos -->
+        <footer class="text-center text-black font-bold text-xs pt-2 pb-4">
+            <p class="mb-1">Créditos: Desenvolvido pelo professor <strong class="text-[#C87F8B]">Glauber Santiago</strong> — DAC/UFSCar</p>
+            <p>Websites: 
+                <a href="http://servidores.ufscar.br/glauber/" target="_blank" class="text-black underline hover:text-[#C87F8B] transition">servidores.ufscar.br/glauber/</a> | 
+                <a href="https://sites.google.com/view/glauberia" target="_blank" class="text-black underline hover:text-[#C87F8B] transition">sites.google.com/view/glauberia</a>
+            </p>
+        </footer>
+
+    </div>
+
+    <script>
+        // --- CONFIGURAÇÕES DO TECLADO ---
+        let midiAccess = null;
+        let outputPort = null;
+        let inputPort = null;
+        let currentOctave = 4;
+        let currentProgram = 0; 
+        let currentChannel = 1;
+
+        const startNote = 21; 
+        const endNote = 108;  
+
+        const keyMap = {
+            'KeyZ': -12, 'KeyS': -11, 'KeyX': -10, 'KeyD': -9, 'KeyC': -8, 'KeyV': -7,
+            'KeyG': -6, 'KeyB': -5, 'KeyH': -4, 'KeyN': -3, 'KeyJ': -2, 'KeyM': -1,
+            'Comma': 0, 'KeyL': 1, 'Period': 2, 'Semicolon': 3, 'Slash': 4,
+            'KeyQ': 0, 'Digit2': 1, 'KeyW': 2, 'Digit3': 3, 'KeyE': 4, 'KeyR': 5,
+            'Digit5': 6, 'KeyT': 7, 'Digit6': 8, 'KeyY': 9, 'Digit7': 10, 'KeyU': 11,
+            'KeyI': 12, 'Digit9': 13, 'KeyO': 14, 'Digit0': 15, 'KeyP': 16
+        };
+
+        const gmInstruments = [
+            "Piano Acústico", "Piano Brilhante", "Piano Elétrico Grand", "Piano Honky-tonk", "Piano Elétrico 1", "Piano Elétrico 2", "Cravo", "Clavinete",
+            "Celesta", "Glockenspiel", "Caixa de Música", "Vibrafone", "Marimba", "Xilofone", "Sinos Tubulares", "Dulcimer",
+            "Órgão Drawbar", "Órgão Percussivo", "Órgão de Rock", "Órgão de Tubos", "Órgão de Palhetas", "Acordeão", "Gaita", "Acordeão de Tango",
+            "Violão (Nylon)", "Violão (Aço)", "Guitarra (Jazz)", "Guitarra (Limpa)", "Guitarra (Mutada)", "Guitarra (Overdrive)", "Guitarra (Distorção)", "Harmônicos de Guitarra",
+            "Baixo Acústico", "Baixo Elétrico (Dedo)", "Baixo Elétrico (Palheta)", "Baixo Fretless", "Baixo Slap 1", "Baixo Slap 2", "Baixo Sintético 1", "Baixo Sintético 2",
+            "Violino", "Viola", "Violoncelo", "Contrabaixo", "Cordas em Tremolo", "Cordas em Pizzicato", "Harpa Orquestral", "Tímpano",
+            "Conjunto de Cordas 1", "Conjunto de Cordas 2", "Cordas Sintéticas 1", "Cordas Sintéticas 2", "Coro Aahs", "Voz Oohs", "Voz Sintética", "Hit Orquestral",
+            "Trompete", "Trombone", "Tuba", "Trompete com Surdina", "Trompa", "Seção de Metais", "Metais Sintéticos 1", "Metais Sintéticos 2",
+            "Saxofone Soprano", "Saxofone Alto", "Saxofone Tenor", "Saxofone Barítono", "Oboé", "Corne Inglês", "Fagote", "Clarinete",
+            "Flautim", "Flauta Transversal", "Flauta Doce", "Flauta de Pã", "Garrafa Soprada", "Shakuhachi", "Apito", "Ocarina",
+            "Lead 1 (Square)", "Lead 2 (Sawtooth)", "Lead 3 (Calliope)", "Lead 4 (Chiff)", "Lead 5 (Charang)", "Lead 6 (Voice)", "Lead 7 (Fifths)", "Lead 8 (Bass+Lead)",
+            "Pad 1 (New Age)", "Pad 2 (Warm)", "Pad 3 (Polysynth)", "Pad 4 (Choir)", "Pad 5 (Bowed)", "Pad 6 (Metallic)", "Pad 7 (Halo)", "Pad 8 (Sweep)",
+            "Efeito 1 (Chuva)", "Efeito 2 (Trilha Sonora)", "Efeito 3 (Cristal)", "Efeito 4 (Atmosfera)", "Efeito 5 (Brilho)", "Efeito 6 (Goblins)", "Efeito 7 (Ecos)", "Efeito 8 (Ficção Científica)"
+        ];
+
+        const sfNames = [
+            "acoustic_grand_piano", "bright_acoustic_piano", "electric_grand_piano", "honkytonk_piano", "electric_piano_1", "electric_piano_2", "harpsichord", "clavi",
+            "celesta", "glockenspiel", "music_box", "vibraphone", "marimba", "xylophone", "tubular_bells", "dulcimer",
+            "drawbar_organ", "percussive_organ", "rock_organ", "church_organ", "reed_organ", "accordion", "harmonica", "tango_accordion",
+            "acoustic_guitar_nylon", "acoustic_guitar_steel", "electric_guitar_jazz", "electric_guitar_clean", "electric_guitar_muted", "overdriven_guitar", "distortion_guitar", "guitar_harmonics",
+            "acoustic_bass", "electric_bass_finger", "electric_bass_pick", "fretless_bass", "slap_bass_1", "slap_bass_2", "synth_bass_1", "synth_bass_2",
+            "violin", "viola", "cello", "contrabass", "tremolo_strings", "pizzicato_strings", "orchestral_harp", "timpani",
+            "string_ensemble_1", "string_ensemble_2", "synthstrings_1", "synthstrings_2", "choir_aahs", "voice_oohs", "synth_voice", "orchestral_hit",
+            "trumpet", "trombone", "tuba", "muted_trumpet", "french_horn", "brass_section", "synthbrass_1", "synthbrass_2",
+            "soprano_sax", "alto_sax", "tenor_sax", "baritone_sax", "oboe", "english_horn", "bassoon", "clarinet",
+            "piccolo", "flute", "recorder", "pan_flute", "blown_bottle", "shakuhachi", "whistle", "ocarina",
+            "lead_1_square", "lead_2_sawtooth", "lead_3_calliope", "lead_4_chiff", "lead_5_charang", "lead_6_voice", "lead_7_fifths", "lead_8_bass_lead",
+            "pad_1_new_age", "pad_2_warm", "pad_3_polysynth", "pad_4_choir", "pad_5_bowed", "pad_6_metallic", "pad_7_halo", "pad_8_sweep",
+            "fx_1_rain", "fx_2_soundtrack", "fx_3_crystal", "fx_4_atmosphere", "fx_5_brightness", "fx_6_goblins", "fx_7_echoes", "fx_8_scifi"
+        ];
+
+        // --- SISTEMA DE GRAVAÇÃO E METRÔNOMO ---
+        let isRecording = false;
+        let isPlaying = false;
+        let recordStartTime = 0;
+        let recordedNotes = []; 
+        let activeRecordingNotes = {}; 
+        let playbackTimers = []; 
+
+        // Variáveis do Metrônomo
+        let isMetronomeOn = true;
+        let bpm = 120;
+        let timeSignature = [4, 4];
+        let nextClickTime = 0;
+        let currentBeat = 0;
+        let metronomeTimer = null;
+
+        const btnRecord = document.getElementById('btn-record');
+        const btnPlay = document.getElementById('btn-play');
+        const btnStop = document.getElementById('btn-stop');
+        const btnClear = document.getElementById('btn-clear');
+        const btnExport = document.getElementById('btn-export');
+        const exportTextEl = document.getElementById('export-text');
+        const noteCountEl = document.getElementById('note-count');
+
+        // Atualização de Estados do Metrônomo via UI
+        document.getElementById('metronome-toggle').addEventListener('change', (e) => isMetronomeOn = e.target.checked);
+        document.getElementById('bpm-input').addEventListener('change', (e) => bpm = parseInt(e.target.value) || 120);
+        document.getElementById('time-sig-select').addEventListener('change', (e) => {
+            const parts = e.target.value.split('/');
+            timeSignature = [parseInt(parts[0]), parseInt(parts[1])];
+        });
+
+        // Áudio do Beep do Metrônomo (Sem precisar baixar samples da internet)
+        function playClickAudio(time, isAccent) {
+            if (!audioCtx) return;
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            
+            // Frequência diferente para o tempo forte (1) e fraco (2, 3, 4...)
+            osc.frequency.value = isAccent ? 1200 : 800;
+            osc.type = 'sine';
+            
+            // Envelope percussivo rápido
+            gain.gain.setValueAtTime(0, time);
+            gain.gain.linearRampToValueAtTime(0.5, time + 0.002);
+            gain.gain.exponentialRampToValueAtTime(0.001, time + 0.1);
+            
+            osc.start(time);
+            osc.stop(time + 0.1);
+        }
+
+        // Agendador do Metrônomo para Gravação
+        function scheduleMetronome() {
+            if (!isRecording) return;
+            const lookahead = 0.1; // Olha 100ms para o futuro para agendar sem atraso
+            
+            while (nextClickTime < audioCtx.currentTime + lookahead) {
+                const isAccent = (currentBeat === 0);
+                
+                // Toca o bip de áudio
+                playClickAudio(nextClickTime, isAccent);
+                
+                // Salva o clique internamente APENAS para o playback visual
+                recordedNotes.push({
+                    pitch: 37, // 37 corresponde à nota C#2 (Side Stick / Aro) no General MIDI
+                    start: nextClickTime - recordStartTime,
+                    duration: 0.1,
+                    velocity: isAccent ? 100 : 80, // Tempo forte = 100, Tempos fracos = 80
+                    channel: 10,
+                    program: 0,
+                    isMetronome: true
+                });
+
+                // Avança para o próximo tempo
+                nextClickTime += (60.0 / bpm);
+                currentBeat++;
+                if (currentBeat >= timeSignature[0]) {
+                    currentBeat = 0;
+                }
+            }
+            metronomeTimer = setTimeout(scheduleMetronome, 25);
+            updateRecorderUI(); // Atualiza contador de notas
+        }
+
+        function updateRecorderUI() {
+            // Oculta notas do metrônomo do contador visual pra não confundir o usuário
+            const melodicNotesCount = recordedNotes.filter(n => !n.isMetronome).length;
+            noteCountEl.textContent = melodicNotesCount;
+            
+            btnPlay.disabled = recordedNotes.length === 0 || isRecording;
+            btnExport.disabled = melodicNotesCount === 0 || isRecording;
+            btnStop.disabled = !isRecording && !isPlaying;
+            
+            if (isRecording) {
+                btnRecord.style.backgroundColor = '#C87F8B';
+                btnRecord.style.color = '#FFFFFF';
+                document.querySelector('.record-dot').classList.add('animate-ping');
+                document.getElementById('record-text').textContent = 'Gravando...';
+            } else {
+                btnRecord.style.backgroundColor = '#FFFFFF';
+                btnRecord.style.color = '#C87F8B';
+                document.querySelector('.record-dot').classList.remove('animate-ping');
+                document.getElementById('record-text').textContent = 'Gravar';
+            }
+        }
+
+        btnRecord.addEventListener('click', async () => {
+            if (isPlaying) stopPlayback();
+            isRecording = !isRecording;
+            
+            if (isRecording) {
+                if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                if (audioCtx.state === 'suspended') {
+                    await audioCtx.resume(); // Aguarda o áudio iniciar para o tempo não ficar dessincronizado
+                }
+                
+                // O tempo zero da gravação será o instante exato em que o contexto de áudio estiver pronto
+                recordStartTime = audioCtx.currentTime;
+                
+                if (isMetronomeOn) {
+                    nextClickTime = recordStartTime;
+                    currentBeat = 0;
+                    scheduleMetronome();
+                }
+            } else {
+                // Parar gravação
+                clearTimeout(metronomeTimer);
+                const now = audioCtx.currentTime;
+                for (const note in activeRecordingNotes) {
+                    let rNote = activeRecordingNotes[note];
+                    rNote.duration = now - recordStartTime - rNote.start;
+                    recordedNotes.push(rNote);
+                }
+                activeRecordingNotes = {};
+            }
+            updateRecorderUI();
+        });
+
+        btnClear.addEventListener('click', () => {
+            if (isRecording) btnRecord.click(); 
+            if (isPlaying) stopPlayback();
+            recordedNotes = [];
+            activeRecordingNotes = {};
+            updateRecorderUI();
+        });
+
+        btnPlay.addEventListener('click', () => {
+            if (recordedNotes.length === 0 || isRecording || isPlaying) return;
+            isPlaying = true;
+            updateRecorderUI();
+            
+            let maxDuration = 0;
+
+            recordedNotes.forEach(n => {
+                const playTime = n.start;
+                const endTime = n.start + n.duration;
+                if (endTime > maxDuration) maxDuration = endTime;
+
+                let t1 = setTimeout(() => {
+                    if (n.isMetronome) {
+                        // Toca o clique do metrônomo gravado apenas se ele estiver ligado na UI
+                        if (isMetronomeOn && audioCtx) {
+                            // Identifica se é o tempo forte através da velocity em vez do pitch
+                            playClickAudio(audioCtx.currentTime, n.velocity === 100);
+                        }
+                    } else {
+                        // Toca a melodia
+                        if (currentProgram !== n.program) {
+                            currentProgram = n.program;
+                            document.getElementById('instrument-select').value = n.program;
+                            changeProgram(n.program);
+                        }
+                        playNote(n.pitch, true);
+                    }
+                }, playTime * 1000);
+
+                let t2 = setTimeout(() => {
+                    if (!n.isMetronome) {
+                        stopNote(n.pitch, true);
+                    }
+                }, endTime * 1000);
+
+                playbackTimers.push(t1, t2);
+            });
+
+            playbackTimers.push(setTimeout(() => {
+                isPlaying = false;
+                updateRecorderUI();
+            }, maxDuration * 1000 + 500));
+        });
+
+        function stopPlayback() {
+            playbackTimers.forEach(clearTimeout);
+            playbackTimers = [];
+            isPlaying = false;
+            document.querySelectorAll('.key.active').forEach(k => {
+                stopNote(parseInt(k.dataset.note), true);
+            });
+            updateRecorderUI();
+        }
+
+        btnStop.addEventListener('click', () => {
+            if (isRecording) btnRecord.click();
+            if (isPlaying) stopPlayback();
+        });
+
+        // Exportação Real de Arquivo MIDI (Com Pista de Metrônomo Restaurada)
+        btnExport.addEventListener('click', async () => {
+            if (recordedNotes.length === 0) return;
+            
+            exportTextEl.textContent = 'Gerando...';
+            btnExport.disabled = true;
+
+            try {
+                // Pega os metadados digitados pelo utilizador
+                let songTitle = document.getElementById('song-title').value.trim();
+                let composerName = document.getElementById('composer-name').value.trim();
+                
+                if (!songTitle) songTitle = "Gravacao_Pastel";
+                if (!composerName) composerName = "Artista";
+                
+                const safeTitle = songTitle.replace(/[^a-zA-Z0-9_\u00C0-\u00FF \-]/g, '_');
+                const safeName = composerName.replace(/[^a-zA-Z0-9_\u00C0-\u00FF \-]/g, '_');
+
+                // Importa a biblioteca MidiWriterJS dinamicamente
+                const module = await import('https://esm.sh/midi-writer-js@2.1.4');
+                const MidiWriter = module.default || module;
+                
+                // Cria as duas pistas separadas
+                const trackMelody = new MidiWriter.Track();
+                const trackMetronome = new MidiWriter.Track();
+                
+                // Configurações Musicais Globais na primeira pista
+                trackMelody.setTempo(bpm);
+                trackMelody.setTimeSignature(timeSignature[0], timeSignature[1]);
+
+                const ticksPerBeat = 128; // Resolução padrão
+                const ticksPerSecond = (bpm / 60) * ticksPerBeat; 
+
+                // TRUQUE DE MESTRE: Adiciona notas inaudíveis no instante absoluto zero nas duas pistas.
+                // Isso cria uma "âncora" para as DAWs não cortarem o silêncio do início e tirarem o compasso do lugar.
+                trackMelody.addEvent(new MidiWriter.NoteEvent({
+                    pitch: [12], duration: 'T1', startTick: 0, velocity: 0, channel: 1
+                }));
+                trackMetronome.addEvent(new MidiWriter.NoteEvent({
+                    pitch: [12], duration: 'T1', startTick: 0, velocity: 0, channel: 10
+                }));
+
+                const sortedNotes = [...recordedNotes].sort((a,b) => a.start - b.start);
+                
+                // Distribui as notas para as suas respectivas pistas
+                sortedNotes.forEach(n => {
+                    const startTick = Math.round(n.start * ticksPerSecond);
+                    let durTick = Math.round(n.duration * ticksPerSecond);
+                    
+                    if (isNaN(durTick) || durTick <= 0) durTick = 1;
+                    
+                    if (n.isMetronome) {
+                        trackMetronome.addEvent(new MidiWriter.NoteEvent({
+                            pitch: [n.pitch],
+                            duration: 'T' + durTick,
+                            startTick: startTick,
+                            velocity: n.velocity || 100,
+                            channel: 10 // Canal padrão de bateria
+                        }));
+                    } else {
+                        trackMelody.addEvent(new MidiWriter.NoteEvent({
+                            pitch: [n.pitch],
+                            duration: 'T' + durTick,
+                            startTick: startTick,
+                            velocity: n.velocity || 100,
+                            channel: 1
+                        }));
+                    }
+                });
+
+                // Gera o ficheiro binário com AS DUAS pistas unidas
+                const write = new MidiWriter.Writer([trackMelody, trackMetronome]);
+                const dataUri = write.dataUri();
+
+                // Inicia a transferência
+                const link = document.createElement('a');
+                link.href = dataUri;
+                link.download = `${safeTitle.replace(/ /g, '_')}_por_${safeName.replace(/ /g, '_')}.mid`;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                
+            } catch (err) {
+                console.error("Erro ao processar as notas para MIDI: ", err);
+                alert("Ocorreu um erro ao gerar as faixas do ficheiro MIDI. Verifique a sua ligação e tente novamente.");
+            } finally {
+                exportTextEl.textContent = '⬇ Baixar .MID';
+                updateRecorderUI();
+                btnExport.disabled = false;
+            }
+        });
+
+        // --- INICIALIZAÇÃO DA INTERFACE ---
+        const selectInstrument = document.getElementById('instrument-select');
+        function updateInstrumentList() {
+            selectInstrument.innerHTML = '';
+            gmInstruments.forEach((inst, index) => {
+                const opt = document.createElement('option');
+                opt.value = index; 
+                opt.text = `${String(index + 1).padStart(3, '0')} - ${inst}`;
+                selectInstrument.appendChild(opt);
+            });
+            currentProgram = 0; 
+        }
+        updateInstrumentList();
+
+        selectInstrument.addEventListener('change', (e) => {
+            currentProgram = parseInt(e.target.value);
+            changeProgram(currentProgram);
+        });
+
+        function getKeyLabel(note) {
+            const baseNote = (currentOctave + 1) * 12;
+            for (const [key, offset] of Object.entries(keyMap)) {
+                if (baseNote + offset === note) {
+                    return key.replace('Key', '').replace('Digit', '').replace('Comma', ',').replace('Period', '.').replace('Slash','/').replace('Semicolon',';');
+                }
+            }
+            return '';
+        }
+
+        const pianoContainer = document.getElementById('piano');
+        let pianoHTML = '';
+        for (let i = startNote; i <= endNote; i++) {
+            const isBlack = [1, 3, 6, 8, 10].includes(i % 12);
+            if (!isBlack) {
+                const nextIsBlack = [1, 3, 6, 8, 10].includes((i + 1) % 12);
+                let blackHTML = '';
+                if (nextIsBlack && (i + 1) <= endNote) {
+                     blackHTML = `<div class="key black" data-note="${i+1}"></div>`;
+                }
+                pianoHTML += `
+                    <div class="relative flex-none">
+                        <div class="key white" data-note="${i}"><span class="absolute bottom-6 w-full text-center text-[10px] pointer-events-none text-black font-black opacity-30"></span></div>
+                        ${blackHTML}
+                    </div>
+                `;
+            }
+        }
+        pianoContainer.innerHTML = pianoHTML;
+
+        function updateLabels() {
+            document.querySelectorAll('.key').forEach(keyEl => {
+                const note = parseInt(keyEl.dataset.note);
+                const label = getKeyLabel(note);
+                const span = keyEl.querySelector('span');
+                if (span) span.textContent = label;
+            });
+            document.getElementById('oct-display').textContent = currentOctave;
+        }
+        updateLabels();
+
+        setTimeout(() => {
+            const middleC = document.querySelector('.key[data-note="60"]');
+            if (middleC) middleC.scrollIntoView({ behavior: 'smooth', inline: 'center' });
+        }, 300);
+
+        document.getElementById('oct-up').addEventListener('click', () => { if (currentOctave < 7) { currentOctave++; updateLabels(); } });
+        document.getElementById('oct-down').addEventListener('click', () => { if (currentOctave > 1) { currentOctave--; updateLabels(); } });
+
+
+        // --- ÁUDIO E WEB MIDI ---
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        let audioCtx = AudioContext ? new AudioContext() : null;
+        let sfInstrument = null;
+        let activeSfNotes = {};
+
+        async function loadSoundfont(progNum) {
+            if (!audioCtx) audioCtx = new AudioContext();
+            if (audioCtx.state === 'suspended') {
+                try { await audioCtx.resume(); } catch(e) {}
+            }
+            setStatus(`Baixando: ${gmInstruments[progNum]}...`, 'loading');
+            try {
+                const instName = sfNames[progNum] || "acoustic_grand_piano";
+                sfInstrument = await Soundfont.instrument(audioCtx, instName, { soundfont: 'MusyngKite' });
+                setStatus('Pronto para tocar', 'ok');
+            } catch (e) {
+                console.error(e);
+                setStatus('Erro ao carregar', 'error');
+            }
+        }
+
+        function playAudioSynth(note) {
+            if (!audioCtx || !sfInstrument) return;
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            if (activeSfNotes[note]) return; 
+            activeSfNotes[note] = sfInstrument.play(note, audioCtx.currentTime, { gain: 1.5 });
+        }
+
+        function stopAudioSynth(note) {
+            if (activeSfNotes[note]) {
+                activeSfNotes[note].stop(audioCtx.currentTime + 0.1); 
+                delete activeSfNotes[note];
+            }
+        }
+
+        function setStatus(msg, state) {
+            document.getElementById('status-text').textContent = msg;
+            const dot = document.getElementById('status-dot');
+            dot.style.backgroundColor = state === 'ok' ? '#BCDFB9' : state === 'error' ? '#C87F8B' : '#E9A97F';
+            
+            if(state !== 'ok' && state !== 'error'){
+                dot.classList.add('animate-pulse');
+            } else {
+                dot.classList.remove('animate-pulse');
+            }
+        }
+
+        function updateDevices() {
+            const selectIn = document.getElementById('midi-in-select');
+            selectIn.innerHTML = '<option value="">Nenhum / Apenas QWERTY</option>';
+            let foundIn = false;
+            for (let input of midiAccess.inputs.values()) {
+                const opt = document.createElement('option');
+                opt.value = input.id; opt.text = input.name; selectIn.appendChild(opt);
+                if (!foundIn) { foundIn = true; opt.selected = true; inputPort = input; inputPort.onmidimessage = onMidiMessage; }
+            }
+            if (!foundIn) inputPort = null;
+
+            const selectOut = document.getElementById('midi-out-select');
+            selectOut.innerHTML = '<option value="web-synth">Sintetizador Web (Padrão)</option>';
+            for (let output of midiAccess.outputs.values()) {
+                const opt = document.createElement('option');
+                opt.value = output.id; opt.text = output.name; selectOut.appendChild(opt);
+            }
+            if (!outputPort) {
+                loadSoundfont(currentProgram);
+            } else {
+                setStatus('MIDI Ativo', 'ok');
+            }
+        }
+
+        function onMidiMessage(msg) {
+            const [status, note, velocity] = msg.data;
+            const cmd = status >> 4;
+            if (cmd === 9 && velocity > 0) playNote(note);
+            else if (cmd === 8 || (cmd === 9 && velocity === 0)) stopNote(note);
+        }
+
+        async function initMIDI() {
+            if (navigator.requestMIDIAccess) {
+                try {
+                    midiAccess = await navigator.requestMIDIAccess({ sysex: false });
+                    updateDevices();
+                    midiAccess.onstatechange = updateDevices;
+                } catch (err) {
+                    setStatus('Sem permissão MIDI', 'error');
+                    loadSoundfont(currentProgram);
+                }
+            } else {
+                setStatus('Web MIDI não suportada', 'error');
+                loadSoundfont(currentProgram);
+            }
+        }
+
+        document.getElementById('midi-out-select').addEventListener('change', (e) => {
+            const val = e.target.value;
+            if (val === 'web-synth') { outputPort = null; loadSoundfont(currentProgram); } 
+            else if (midiAccess) { outputPort = midiAccess.outputs.get(val) || null; if (outputPort) changeProgram(currentProgram); }
+        });
+
+        document.getElementById('midi-in-select').addEventListener('change', (e) => {
+            if (inputPort) inputPort.onmidimessage = null;
+            const val = e.target.value;
+            inputPort = (val && midiAccess) ? midiAccess.inputs.get(val) : null;
+            if (inputPort) inputPort.onmidimessage = onMidiMessage;
+        });
+
+        initMIDI();
+
+        // --- INTEGRAÇÃO GRAVADOR + TECLADO ---
+
+        function playNote(note, isPlayback = false) {
+            if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+
+            if (outputPort) outputPort.send([0x90, note, 100]);
+            else playAudioSynth(note);
+            
+            const keyEl = document.querySelector(`.key[data-note="${note}"]`);
+            if (keyEl) keyEl.classList.add('active');
+
+            if (isRecording && !isPlayback) {
+                const timeNow = audioCtx.currentTime;
+                activeRecordingNotes[note] = {
+                    pitch: note,
+                    start: timeNow - recordStartTime,
+                    velocity: 100,
+                    channel: currentChannel,
+                    program: currentProgram
+                };
+            }
+        }
+
+        function stopNote(note, isPlayback = false) {
+            if (outputPort) outputPort.send([0x80, note, 0]);
+            else stopAudioSynth(note);
+            
+            const keyEl = document.querySelector(`.key[data-note="${note}"]`);
+            if (keyEl) keyEl.classList.remove('active');
+
+            if (isRecording && !isPlayback && activeRecordingNotes[note]) {
+                const timeNow = audioCtx.currentTime;
+                let recNote = activeRecordingNotes[note];
+                recNote.duration = (timeNow - recordStartTime) - recNote.start;
+                
+                if (recNote.duration > 0.01) {
+                    recordedNotes.push(recNote);
+                    updateRecorderUI();
+                }
+                delete activeRecordingNotes[note];
+            }
+        }
+
+        function changeProgram(programNumber) {
+            if (outputPort) outputPort.send([0xC0, programNumber]);
+            else loadSoundfont(programNumber);
+        }
+
+        // --- INTERAÇÃO FÍSICA ---
+        let isMouseDown = false;
+        let currentMouseNote = null;
+
+        pianoContainer.addEventListener('mousedown', (e) => {
+            isMouseDown = true;
+            const key = e.target.closest('.key');
+            if (key) {
+                const note = parseInt(key.dataset.note);
+                playNote(note);
+                currentMouseNote = note;
+            }
+        });
+
+        pianoContainer.addEventListener('mouseover', (e) => {
+            if (!isMouseDown) return;
+            const key = e.target.closest('.key');
+            if (key) {
+                const note = parseInt(key.dataset.note);
+                if (note !== currentMouseNote) {
+                    if (currentMouseNote !== null) stopNote(currentMouseNote);
+                    playNote(note);
+                    currentMouseNote = note;
+                }
+            }
+        });
+
+        pianoContainer.addEventListener('mouseout', (e) => {
+            if (!isMouseDown) return;
+            const key = e.target.closest('.key');
+            if (key) {
+                const note = parseInt(key.dataset.note);
+                if (note === currentMouseNote) {
+                    stopNote(note);
+                    currentMouseNote = null;
+                }
+            }
+        });
+
+        window.addEventListener('mouseup', () => {
+            isMouseDown = false;
+            if (currentMouseNote !== null) { stopNote(currentMouseNote); currentMouseNote = null; }
+        });
+
+        const activePCNotes = new Map();
+        window.addEventListener('keydown', (e) => {
+            if (e.repeat || ['INPUT', 'SELECT', 'TEXTAREA'].includes(e.target.tagName)) return; 
+            const offset = keyMap[e.code];
+            if (offset !== undefined) {
+                const note = (currentOctave + 1) * 12 + offset;
+                if (note >= startNote && note <= endNote) {
+                    playNote(note);
+                    activePCNotes.set(e.code, note);
+                }
+            }
+        });
+
+        window.addEventListener('keyup', (e) => {
+            if (activePCNotes.has(e.code)) {
+                stopNote(activePCNotes.get(e.code));
+                activePCNotes.delete(e.code);
+            }
+        });
+
+    </script>
+</body>
+</html>
