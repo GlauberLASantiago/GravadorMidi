@@ -5,9 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Estúdio MIDI Online - Edição Pastel</title>
     <!-- Tailwind CSS para estilização -->
-    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="libs/tailwind.css">
     <!-- Soundfont Player para carregar samples -->
-    <script src="https://unpkg.com/soundfont-player/dist/soundfont-player.min.js"></script>
+    <script src="libs/soundfont-player.min.js"></script>
+    <!-- MIDI Writer para exportação de arquivos MIDI -->
+    <script src="libs/midi-writer.js"></script>
     <style>
         /* * PALETA DE CORES:
          * Verde Claro: #BCDFB9
@@ -598,8 +600,7 @@
                 const safeTitle = songTitle.replace(/[^a-zA-Z0-9_\u00C0-\u00FF \-]/g, '_');
                 const safeName = composerName.replace(/[^a-zA-Z0-9_\u00C0-\u00FF \-]/g, '_');
 
-                const module = await import('https://esm.sh/midi-writer-js@2.1.4');
-                const MidiWriter = module.default || module;
+                const MidiWriter = window.MidiWriter;
                 
                 const trackMelody = new MidiWriter.Track();
                 const trackMetronome = new MidiWriter.Track();
@@ -757,7 +758,9 @@
             setStatus(`Baixando: ${gmInstruments[progNum]}...`, 'loading');
             try {
                 const instName = sfNames[progNum] || "acoustic_grand_piano";
-                sfInstrument = await Soundfont.instrument(audioCtx, instName, { soundfont: 'MusyngKite' });
+                sfInstrument = await Soundfont.instrument(audioCtx, instName, {
+                    nameToUrl: (name, sf, format) => `soundfonts/MusyngKite/${name}-${format}.js`
+                });
                 setStatus('Pronto para tocar', 'ok');
             } catch (e) {
                 console.error(e);
