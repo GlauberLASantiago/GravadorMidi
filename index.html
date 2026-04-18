@@ -759,7 +759,7 @@
             try {
                 const instName = sfNames[progNum] || "acoustic_grand_piano";
                 sfInstrument = await Soundfont.instrument(audioCtx, instName, {
-                    nameToUrl: (name, sf, format) => `soundfonts/MusyngKite/${name}-${format}.js`
+                    nameToUrl: (name, sf, format) => `soundfonts/MusyngKite/${name}-${format || 'mp3'}.js`
                 });
                 setStatus('Pronto para tocar', 'ok');
             } catch (e) {
