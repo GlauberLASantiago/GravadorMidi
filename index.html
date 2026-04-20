@@ -948,6 +948,80 @@
             if (currentMouseNote !== null) { stopNote(currentMouseNote); currentMouseNote = null; }
         });
 
+        // --- SUPORTE A TOUCH (MOBILE) ---
+        const activeTouchNotes = new Map();
+
+        async function ensureAudioReady() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            if (audioCtx.state === 'suspended') {
+                await audioCtx.resume();
+            }
+            if (!sfInstrument) {
+                await loadSoundfont(currentProgram);
+            }
+        }
+
+        pianoContainer.addEventListener('touchstart', async (e) => {
+            const firstTouch = e.changedTouches[0];
+            const firstEl = document.elementFromPoint(firstTouch.clientX, firstTouch.clientY);
+            if (!firstEl || !firstEl.closest('.key')) return; // Permite scroll se não tocar em tecla
+            e.preventDefault();
+            await ensureAudioReady();
+            for (const touch of e.changedTouches) {
+                const el = document.elementFromPoint(touch.clientX, touch.clientY);
+                const key = el ? el.closest('.key') : null;
+                if (key) {
+                    const note = parseInt(key.dataset.note);
+                    playNote(note);
+                    activeTouchNotes.set(touch.identifier, note);
+                }
+            }
+        }, { passive: false });
+
+        pianoContainer.addEventListener('touchmove', (e) => {
+            // Só impede o scroll se algum dos toques em movimento estava ativo em uma tecla
+            const hasActive = Array.from(e.changedTouches).some(t => activeTouchNotes.has(t.identifier));
+            if (hasActive) e.preventDefault();
+            for (const touch of e.changedTouches) {
+                const el = document.elementFromPoint(touch.clientX, touch.clientY);
+                const key = el ? el.closest('.key') : null;
+                const prevNote = activeTouchNotes.get(touch.identifier);
+                const newNote = key ? parseInt(key.dataset.note) : null;
+                if (prevNote !== undefined && prevNote !== newNote) {
+                    stopNote(prevNote);
+                }
+                if (newNote !== null && newNote !== prevNote) {
+                    playNote(newNote);
+                    activeTouchNotes.set(touch.identifier, newNote);
+                } else if (newNote === null) {
+                    activeTouchNotes.delete(touch.identifier);
+                }
+            }
+        }, { passive: false });
+
+        pianoContainer.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            for (const touch of e.changedTouches) {
+                const note = activeTouchNotes.get(touch.identifier);
+                if (note !== undefined) {
+                    stopNote(note);
+                    activeTouchNotes.delete(touch.identifier);
+                }
+            }
+        }, { passive: false });
+
+        pianoContainer.addEventListener('touchcancel', (e) => {
+            for (const touch of e.changedTouches) {
+                const note = activeTouchNotes.get(touch.identifier);
+                if (note !== undefined) {
+                    stopNote(note);
+                    activeTouchNotes.delete(touch.identifier);
+                }
+            }
+        }, { passive: false });
+
         const activePCNotes = new Map();
         window.addEventListener('keydown', (e) => {
             if (e.repeat || ['INPUT', 'SELECT', 'TEXTAREA'].includes(e.target.tagName)) return; 
