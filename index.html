@@ -4,6 +4,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Estúdio MIDI Online - Edição Pastel</title>
+    <!-- PWA -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#BCDFB9">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="GravadorMIDI">
+    <link rel="apple-touch-icon" href="icons/icon-192.svg">
     <!-- Tailwind CSS para estilização -->
     <link rel="stylesheet" href="libs/tailwind.css">
     <!-- Soundfont Player para carregar samples -->
@@ -1042,6 +1050,16 @@
             }
         });
 
+    </script>
+
+    <!-- Registro do Service Worker para PWA -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js')
+                    .catch((err) => console.warn('Service Worker não pôde ser registrado:', err));
+            });
+        }
     </script>
 </body>
 </html>
